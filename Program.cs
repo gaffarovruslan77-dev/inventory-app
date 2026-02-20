@@ -14,8 +14,12 @@ builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication();
-
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Auth:Google:ClientId"]!;
+        options.ClientSecret = builder.Configuration["Auth:Google:ClientSecret"]!;
+    });
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
