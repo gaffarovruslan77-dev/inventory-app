@@ -1,0 +1,131 @@
+@model InventoryApp.Web.Models.Inventory
+@{
+    ViewData["Title"] = Model.Title;
+    var tab = ViewBag.Tab as string ?? "items";
+    var userId = ViewBag.UserId as string;
+    var isOwner = userId == Model.CreatorId;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>@Model.Title</h2>
+    @if (isOwner)
+    {
+        <form method="post" asp-action="Delete" asp-route-id="@Model.Id"
+              onsubmit="return confirm('Delete this inventory?')">
+            <button class="btn btn-outline-danger btn-sm">Delete</button>
+        </form>
+    }
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(tab == "items" ? "active" : "")"
+           href="/Inventory/Details/@Model.Id?tab=items">Items</a>
+    </li>
+    @if (isOwner)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(tab == "settings" ? "active" : "")"
+               href="/Inventory/Details/@Model.Id?tab=settings">Settings</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(tab == "fields" ? "active" : "")"
+               href="/Inventory/Details/@Model.Id?tab=fields">Fields</a>
+        </li>
+    }
+</ul>
+
+@if (tab == "items")
+{
+    <a href="/Item/Create/@Model.Id" class="btn btn-primary btn-sm mb-3">+ Add Item</a>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Created</th>
+                @if (Model.CustomString1State)
+                { <th>@Model.CustomString1Name</th> }
+                @if (Model.CustomInt1State)
+                { <th>@Model.CustomInt1Name</th> }
+                @if (Model.CustomBool1State)
+                { <th>@Model.CustomBool1Name</th> }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr style="cursor:pointer"
+                    onclick="window.location='/Item/Details/@item.Id'">
+                    <td>@(item.CustomId ?? item.Id.ToString())</td>
+                    <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                    @if (Model.CustomString1State)
+                    { <td>@item.CustomString1</td> }
+                    @if (Model.CustomInt1State)
+                    { <td>@item.CustomInt1</td> }
+                    @if (Model.CustomBool1State)
+                    { <td>@(item.CustomBool1 == true ? "✓" : "")</td> }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (tab == "settings" && isOwner)
+{
+    <form id="settingsForm">
+        <input type="hidden" id="versionField" value="@Model.Version" />
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input id="titleField" class="form-control" value="@Model.Title" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea id="descField" class="form-control" rows="4">@Model.Description</textarea>
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="publicField"
+                   @(Model.IsPublic ? "checked" : "") />
+            <label class="form-check-label">Public inventory</label>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save</button>
+        <span id="saveStatus" class="ms-2 text-muted"></span>
+    </form>
+
+    <script>
+    // Автосохранение каждые 8 секунд
+    setInterval(saveSettings, 8000);
+
+    async function saveSettings() {
+        const data = {
+            id: @Model.Id,
+            title: document.getElementById('titleField').value,
+            description: document.getElementById('descField').value,
+            isPublic: document.getElementById('publicField').checked,
+            version: parseInt(document.getElementById('versionField').value)
+        };
+
+        const response = await fetch('/Inventory/SaveSettings/' + data.id, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+                       'RequestVerificationToken': document.querySelector(
+                           'input[name=__RequestVerificationToken]')?.value || '' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            // Обновляем версию для следующего сохранения
+            document.getElementById('versionField').value = result.version;
+            document.getElementById('saveStatus').textContent = 'Saved ✓';
+            setTimeout(() => document.getElementById('saveStatus').textContent = '', 2000);
+        } else {
+            document.getElementById('saveStatus').textContent = 'Conflict! Reload page.';
+        }
+    }
+    </script>
+}
+
+@if (tab == "fields" && isOwner)
+{
+    <p class="text-muted">Fields configuration coming soon...</p>
+}

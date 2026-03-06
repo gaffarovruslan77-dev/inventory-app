@@ -1,0 +1,57 @@
+@model InventoryApp.Web.Models.Item
+@{
+    ViewData["Title"] = "Item details";
+    var userId = ViewBag.UserId as string;
+    var canDelete = userId == Model.CreatedById || userId == Model.Inventory?.CreatorId;
+}
+
+<h2>Item @((Model.CustomId ?? Model.Id.ToString()))</h2>
+
+<p class="text-muted">
+    Inventory: <a href="/Inventory/Details/@Model.InventoryId?tab=items">
+        @Model.Inventory?.Title
+    </a>
+</p>
+
+<table class="table table-bordered w-auto">
+    <tbody>
+        <tr>
+            <th>Created</th>
+            <td>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+        </tr>
+        @if (!string.IsNullOrEmpty(Model.CustomString1))
+        {
+            <tr>
+                <th>String 1</th>
+                <td>@Model.CustomString1</td>
+            </tr>
+        }
+        @if (Model.CustomInt1.HasValue)
+        {
+            <tr>
+                <th>Int 1</th>
+                <td>@Model.CustomInt1</td>
+            </tr>
+        }
+        @if (Model.CustomBool1.HasValue)
+        {
+            <tr>
+                <th>Bool 1</th>
+                <td>@(Model.CustomBool1 == true ? "Yes" : "No")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="/Inventory/Details/@Model.InventoryId?tab=items" class="btn btn-secondary me-2">Back to inventory</a>
+
+@if (canDelete)
+{
+    <form method="post" asp-action="Delete" asp-route-id="@Model.Id"
+          class="d-inline"
+          onsubmit="return confirm('Delete this item?');">
+        @Html.AntiForgeryToken()
+        <button class="btn btn-danger">Delete</button>
+    </form>
+}
+

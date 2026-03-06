@@ -1,0 +1,43 @@
+@model InventoryApp.Web.Models.Inventory
+@{
+    ViewData["Title"] = "Add Item";
+}
+
+<h2>Add Item to "@Model.Title"</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label class="form-label">Custom ID (optional)</label>
+        <input name="customId" class="form-control" />
+        <div class="form-text">If empty, the numeric ID will be used.</div>
+    </div>
+
+    @if (Model.CustomString1State)
+    {
+        <div class="mb-3">
+            <label class="form-label">@Model.CustomString1Name</label>
+            <input name="customString1" class="form-control" />
+        </div>
+    }
+
+    @if (Model.CustomInt1State)
+    {
+        <div class="mb-3">
+            <label class="form-label">@Model.CustomInt1Name</label>
+            <input name="customInt1" type="number" class="form-control" />
+        </div>
+    }
+
+    @if (Model.CustomBool1State)
+    {
+        <div class="form-check mb-3">
+            <input name="customBool1" type="checkbox" class="form-check-input" value="true" id="cb1" />
+            <label class="form-check-label" for="cb1">@Model.CustomBool1Name</label>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a href="/Inventory/Details/@Model.Id?tab=items" class="btn btn-secondary">Cancel</a>
+</form>
+
