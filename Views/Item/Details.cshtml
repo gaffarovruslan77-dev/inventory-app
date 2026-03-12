@@ -3,6 +3,9 @@
     ViewData["Title"] = "Item details";
     var userId = ViewBag.UserId as string;
     var canDelete = userId == Model.CreatedById || userId == Model.Inventory?.CreatorId;
+    var canEdit = ViewBag.CanEdit as bool? ?? false;
+    var liked = ViewBag.Liked as bool? ?? false;
+    var likeCount = ViewBag.LikeCount as int? ?? 0;
 }
 
 <h2>Item @((Model.CustomId ?? Model.Id.ToString()))</h2>
@@ -45,6 +48,17 @@
 
 <a href="/Inventory/Details/@Model.InventoryId?tab=items" class="btn btn-secondary me-2">Back to inventory</a>
 
+@if (canEdit)
+{
+    <a href="/Item/Edit/@Model.Id" class="btn btn-primary me-2">Edit</a>
+}
+
+<button type="button" class="btn btn-outline-secondary me-2" id="likeBtn"
+        @(User.Identity?.IsAuthenticated == true ? "" : "disabled")>
+    <span id="likeLabel">@(liked ? "Unlike" : "Like")</span>
+    (<span id="likeCount">@likeCount</span>)
+</button>
+
 @if (canDelete)
 {
     <form method="post" asp-action="Delete" asp-route-id="@Model.Id"
@@ -54,4 +68,30 @@
         <button class="btn btn-danger">Delete</button>
     </form>
 }
+
+<script>
+const likeBtn = document.getElementById('likeBtn');
+const likeLabel = document.getElementById('likeLabel');
+const likeCount = document.getElementById('likeCount');
+
+const likeToken = document.querySelector('input[name=__RequestVerificationToken]')?.value || '';
+const itemId = @Model.Id;
+
+if (likeBtn && !likeBtn.disabled) {
+    likeBtn.addEventListener('click', async () => {
+        const resp = await fetch('/Like/Toggle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': likeToken
+            },
+            body: JSON.stringify({ itemId })
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        likeLabel.textContent = data.liked ? 'Unlike' : 'Like';
+        likeCount.textContent = data.count;
+    });
+}
+</script>
 

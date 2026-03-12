@@ -1,0 +1,39 @@
+@model InventoryApp.Web.Models.Item
+@{
+    ViewData["Title"] = "Edit item";
+}
+
+<h2>Edit item @((Model.CustomId ?? Model.Id.ToString()))</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="version" value="@Model.Version" />
+
+    <div class="mb-3">
+        <label class="form-label">Custom ID</label>
+        <input name="customId" class="form-control" value="@Model.CustomId" />
+        <div class="form-text">
+            ID must be unique inside this inventory. Leave empty to keep current value.
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">String 1</label>
+        <input name="customString1" class="form-control" value="@Model.CustomString1" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Int 1</label>
+        <input name="customInt1" type="number" class="form-control" value="@Model.CustomInt1" />
+    </div>
+
+    <div class="form-check mb-3">
+        <input name="customBool1" type="checkbox" class="form-check-input" value="true"
+               id="eb1" @(Model.CustomBool1 == true ? "checked" : "") />
+        <label class="form-check-label" for="eb1">Bool 1</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="/Item/Details/@Model.Id" class="btn btn-secondary">Cancel</a>
+</form>
+

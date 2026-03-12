@@ -1,0 +1,66 @@
+@model IEnumerable<InventoryApp.Web.Controllers.AdminController.UserRow>
+@{
+    ViewData["Title"] = "Admin";
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
+}
+
+<h2>@T("Admin: Users","Админ: Пользователи")</h2>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>@T("Name","Имя")</th>
+            <th>@T("Roles","Роли")</th>
+            <th>@T("Status","Статус")</th>
+            <th style="width: 220px;">@T("Actions","Действия")</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.Email</td>
+                <td>@u.Name</td>
+                <td>@(u.IsAdmin ? T("Admin","Админ") : T("User","Пользователь"))</td>
+                <td>@(u.IsBlocked ? T("Blocked","Заблокирован") : T("Active","Активен"))</td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <form method="post" asp-action="ToggleBlock" asp-route-id="@u.Id">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-outline-warning" type="submit">
+                                @(u.IsBlocked ? T("Unblock","Разблок.") : T("Block","Блок."))
+                            </button>
+                        </form>
+
+                        @if (!u.IsAdmin)
+                        {
+                            <form method="post" asp-action="AddAdmin" asp-route-id="@u.Id">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-primary" type="submit">@T("Make admin","Сделать админом")</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-action="RemoveAdmin" asp-route-id="@u.Id">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-secondary" type="submit">@T("Remove admin","Убрать админа")</button>
+                            </form>
+                        }
+
+                        <form method="post" asp-action="DeleteUser" asp-route-id="@u.Id"
+                              onsubmit="return confirm('@T("Delete user?","Удалить пользователя?")')">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-outline-danger" type="submit">@T("Delete","Удалить")</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+

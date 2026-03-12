@@ -4,11 +4,19 @@
     var tab = ViewBag.Tab as string ?? "items";
     var userId = ViewBag.UserId as string;
     var isOwner = userId == Model.CreatorId;
+    var isAdmin = User.IsInRole("Admin");
+    var canManage = isOwner || isAdmin;
+    var canWrite = ViewBag.CanWrite as bool? ?? false;
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>@Model.Title</h2>
-    @if (isOwner)
+    @if (canManage)
     {
         <form method="post" asp-action="Delete" asp-route-id="@Model.Id"
               onsubmit="return confirm('Delete this inventory?')">
@@ -20,24 +28,35 @@
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
         <a class="nav-link @(tab == "items" ? "active" : "")"
-           href="/Inventory/Details/@Model.Id?tab=items">Items</a>
+           href="/Inventory/Details/@Model.Id?tab=items">@T("Items","Элементы")</a>
     </li>
-    @if (isOwner)
+    @if (canManage)
     {
         <li class="nav-item">
             <a class="nav-link @(tab == "settings" ? "active" : "")"
-               href="/Inventory/Details/@Model.Id?tab=settings">Settings</a>
+               href="/Inventory/Details/@Model.Id?tab=settings">@T("Settings","Настройки")</a>
         </li>
         <li class="nav-item">
             <a class="nav-link @(tab == "fields" ? "active" : "")"
-               href="/Inventory/Details/@Model.Id?tab=fields">Fields</a>
+               href="/Inventory/Details/@Model.Id?tab=fields">@T("Fields","Поля")</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(tab == "access" ? "active" : "")"
+               href="/Inventory/Details/@Model.Id?tab=access">@T("Access","Доступ")</a>
         </li>
     }
+    <li class="nav-item">
+        <a class="nav-link @(tab == "discussion" ? "active" : "")"
+           href="/Inventory/Details/@Model.Id?tab=discussion">@T("Discussion","Обсуждение")</a>
+    </li>
 </ul>
 
 @if (tab == "items")
 {
-    <a href="/Item/Create/@Model.Id" class="btn btn-primary btn-sm mb-3">+ Add Item</a>
+    @if (canWrite)
+    {
+        <a href="/Item/Create/@Model.Id" class="btn btn-primary btn-sm mb-3">+ Add Item</a>
+    }
     <table class="table table-hover">
         <thead>
             <tr>
@@ -70,9 +89,10 @@
     </table>
 }
 
-@if (tab == "settings" && isOwner)
+@if (tab == "settings" && canManage)
 {
     <form id="settingsForm">
+        @Html.AntiForgeryToken()
         <input type="hidden" id="versionField" value="@Model.Version" />
         <div class="mb-3">
             <label class="form-label">Title</label>
@@ -87,15 +107,28 @@
                    @(Model.IsPublic ? "checked" : "") />
             <label class="form-check-label">Public inventory</label>
         </div>
+
+        <div class="mb-3">
+            <label class="form-label">Tags (comma-separated)</label>
+            <input id="tagsField" class="form-control" value="@(string.Join(", ", Model.Tags.Select(t => t.Name)))" autocomplete="off" />
+            <div id="tagSuggestions" class="list-group position-absolute" style="z-index: 1000;"></div>
+            <div class="form-text">Start typing to see existing tags.</div>
+        </div>
+
         <button type="button" class="btn btn-primary" onclick="saveSettings()">Save</button>
         <span id="saveStatus" class="ms-2 text-muted"></span>
     </form>
 
     <script>
-    // Автосохранение каждые 8 секунд
-    setInterval(saveSettings, 8000);
+    let settingsInFlight = false;
+    let lastTagsValue = document.getElementById('tagsField').value;
+
+    // Автосохранение каждые 8 секунд (без параллельных запросов)
+    setInterval(() => { if (!settingsInFlight) saveSettings(); }, 8000);
 
     async function saveSettings() {
+        if (settingsInFlight) return;
+        settingsInFlight = true;
         const data = {
             id: @Model.Id,
             title: document.getElementById('titleField').value,
@@ -104,7 +137,7 @@
             version: parseInt(document.getElementById('versionField').value)
         };
 
-        const response = await fetch('/Inventory/SaveSettings/' + data.id, {
+        const response = await fetch('/Inventory/SaveSettings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json',
                        'RequestVerificationToken': document.querySelector(
@@ -118,14 +151,367 @@
             document.getElementById('versionField').value = result.version;
             document.getElementById('saveStatus').textContent = 'Saved ✓';
             setTimeout(() => document.getElementById('saveStatus').textContent = '', 2000);
+
+            // Сохраняем теги только если изменились
+            const currentTags = document.getElementById('tagsField').value;
+            if (currentTags !== lastTagsValue) {
+                lastTagsValue = currentTags;
+                const r = await fetch('/Inventory/SaveTags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json',
+                               'RequestVerificationToken': document.querySelector(
+                                   'input[name=__RequestVerificationToken]')?.value || '' },
+                    body: JSON.stringify({
+                        inventoryId: @Model.Id,
+                        version: parseInt(document.getElementById('versionField').value),
+                        tags: currentTags
+                    })
+                });
+                if (r.ok) {
+                    const tr = await r.json();
+                    document.getElementById('versionField').value = tr.version;
+                }
+            }
         } else {
             document.getElementById('saveStatus').textContent = 'Conflict! Reload page.';
+        }
+        settingsInFlight = false;
+    }
+
+    // Autocomplete for tags
+    const tagsInput = document.getElementById('tagsField');
+    const tagSuggestions = document.getElementById('tagSuggestions');
+    let tagTimer;
+    tagsInput?.addEventListener('input', () => {
+        clearTimeout(tagTimer);
+        const raw = tagsInput.value;
+        const last = raw.split(',').pop().trim();
+        if (last.length < 1) {
+            tagSuggestions.innerHTML = '';
+            return;
+        }
+        tagTimer = setTimeout(async () => {
+            const resp = await fetch('/Inventory/SearchTags?term=' + encodeURIComponent(last));
+            if (!resp.ok) return;
+            const data = await resp.json();
+            tagSuggestions.innerHTML = '';
+            data.forEach(t => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'list-group-item list-group-item-action';
+                b.textContent = t.name;
+                b.addEventListener('click', () => {
+                    const parts = raw.split(',');
+                    parts[parts.length - 1] = ' ' + t.name;
+                    tagsInput.value = parts.map(p => p.trim()).filter(Boolean).join(', ') + ', ';
+                    tagSuggestions.innerHTML = '';
+                });
+                tagSuggestions.appendChild(b);
+            });
+        }, 200);
+    });
+    </script>
+}
+
+@if (tab == "fields" && canManage)
+{
+    <h5>Fields configuration</h5>
+    <p class="text-muted">
+        Configure which custom fields are available for items in this inventory.
+    </p>
+
+    <form id="fieldsForm">
+        <input type="hidden" id="fieldsVersion" value="@Model.Version" />
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <h6>Single-line text 1</h6>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="fString1State"
+                           @(Model.CustomString1State ? "checked" : "") />
+                    <label class="form-check-label" for="fString1State">Enabled</label>
+                </div>
+                <input id="fString1Name" class="form-control" placeholder="Field title"
+                       value="@Model.CustomString1Name" />
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <h6>Number 1</h6>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="fInt1State"
+                           @(Model.CustomInt1State ? "checked" : "") />
+                    <label class="form-check-label" for="fInt1State">Enabled</label>
+                </div>
+                <input id="fInt1Name" class="form-control" placeholder="Field title"
+                       value="@Model.CustomInt1Name" />
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <h6>Boolean 1</h6>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="fBool1State"
+                           @(Model.CustomBool1State ? "checked" : "") />
+                    <label class="form-check-label" for="fBool1State">Enabled</label>
+                </div>
+                <input id="fBool1Name" class="form-control" placeholder="Field title"
+                       value="@Model.CustomBool1Name" />
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="saveFields()">Save fields</button>
+        <span id="fieldsStatus" class="ms-2 text-muted"></span>
+    </form>
+
+    <script>
+    async function saveFields() {
+        const dto = {
+            id: @Model.Id,
+            version: parseInt(document.getElementById('fieldsVersion').value),
+            customString1Name: document.getElementById('fString1Name').value,
+            customString1State: document.getElementById('fString1State').checked,
+            customInt1Name: document.getElementById('fInt1Name').value,
+            customInt1State: document.getElementById('fInt1State').checked,
+            customBool1Name: document.getElementById('fBool1Name').value,
+            customBool1State: document.getElementById('fBool1State').checked
+        };
+
+        const response = await fetch('/Inventory/SaveFields', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector(
+                    'input[name=__RequestVerificationToken]')?.value || ''
+            },
+            body: JSON.stringify(dto)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            document.getElementById('fieldsVersion').value = result.version;
+            document.getElementById('fieldsStatus').textContent = 'Saved ✓';
+            setTimeout(() => document.getElementById('fieldsStatus').textContent = '', 2000);
+        } else {
+            document.getElementById('fieldsStatus').textContent = 'Conflict! Reload page.';
         }
     }
     </script>
 }
 
-@if (tab == "fields" && isOwner)
+@if (tab == "access" && canManage)
 {
-    <p class="text-muted">Fields configuration coming soon...</p>
+    <h5>Write access</h5>
+    <p class="text-muted">
+        Select users who can add and edit items in this inventory.
+    </p>
+
+    <div class="mb-3">
+        <label class="form-label">Add user by name or email</label>
+        <input id="accessSearch" class="form-control" autocomplete="off" />
+        <div id="accessSuggestions" class="list-group position-absolute" style="z-index: 1000;"></div>
+    </div>
+
+    <form id="accessForm">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th style="width:40px;">
+                        <input type="checkbox" id="selectAllAccess" />
+                    </th>
+                    <th>Name</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody id="accessTableBody">
+                @foreach (var access in Model.AccessList)
+                {
+                    <tr data-user-id="@access.UserId">
+                        <td>
+                            <input type="checkbox" class="access-checkbox" />
+                        </td>
+                        <td>@(access.User?.DisplayName ?? access.User?.UserName ?? access.UserId)</td>
+                        <td>@access.User?.Email</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="button" id="removeAccessBtn" class="btn btn-outline-danger btn-sm">
+            Remove selected
+        </button>
+        <span id="accessStatus" class="ms-2 text-muted"></span>
+    </form>
+
+    <script>
+    const accessInventoryId = @Model.Id;
+
+    const accessSearchInput = document.getElementById('accessSearch');
+    const accessSuggestions = document.getElementById('accessSuggestions');
+    const accessStatus = document.getElementById('accessStatus');
+
+    const accessToken = document.querySelector('input[name=__RequestVerificationToken]')?.value || '';
+
+    document.getElementById('selectAllAccess')?.addEventListener('change', e => {
+        document.querySelectorAll('.access-checkbox').forEach(cb => cb.checked = e.target.checked);
+    });
+
+    document.getElementById('removeAccessBtn')?.addEventListener('click', async () => {
+        const rows = Array.from(document.querySelectorAll('#accessTableBody tr'))
+            .filter(r => r.querySelector('.access-checkbox')?.checked);
+        if (rows.length === 0) return;
+
+        for (const row of rows) {
+            const userId = row.getAttribute('data-user-id');
+            await fetch('/Inventory/RemoveAccess', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': accessToken
+                },
+                body: JSON.stringify({ inventoryId: accessInventoryId, userId })
+            });
+            row.remove();
+        }
+        accessStatus.textContent = 'Access updated';
+        setTimeout(() => accessStatus.textContent = '', 2000);
+    });
+
+    let accessSearchTimeout;
+    accessSearchInput?.addEventListener('input', () => {
+        clearTimeout(accessSearchTimeout);
+        const term = accessSearchInput.value.trim();
+        if (term.length < 2) {
+            accessSuggestions.innerHTML = '';
+            return;
+        }
+        accessSearchTimeout = setTimeout(async () => {
+            const resp = await fetch('/Inventory/SearchUsers?term=' + encodeURIComponent(term));
+            if (!resp.ok) return;
+            const users = await resp.json();
+            accessSuggestions.innerHTML = '';
+            users.forEach(u => {
+                const a = document.createElement('button');
+                a.type = 'button';
+                a.className = 'list-group-item list-group-item-action';
+                a.textContent = `${u.name} (${u.email})`;
+                a.addEventListener('click', async () => {
+                    await fetch('/Inventory/AddAccess', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': accessToken
+                        },
+                        body: JSON.stringify({ inventoryId: accessInventoryId, userId: u.id })
+                    });
+
+                    const existingRow = document.querySelector(
+                        `#accessTableBody tr[data-user-id="${u.id}"]`);
+                    if (!existingRow) {
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('data-user-id', u.id);
+                        tr.innerHTML = `
+                            <td><input type="checkbox" class="access-checkbox" /></td>
+                            <td>${u.name}</td>
+                            <td>${u.email ?? ''}</td>`;
+                        document.getElementById('accessTableBody').appendChild(tr);
+                    }
+
+                    accessSearchInput.value = '';
+                    accessSuggestions.innerHTML = '';
+                    accessStatus.textContent = 'User added';
+                    setTimeout(() => accessStatus.textContent = '', 2000);
+                });
+                accessSuggestions.appendChild(a);
+            });
+        }, 300);
+    });
+    </script>
 }
+
+@if (tab == "discussion")
+{
+    <h5>Discussion</h5>
+    <p class="text-muted">
+        Posts are updated automatically every few seconds.
+    </p>
+
+    <div id="commentsList" class="mb-3 border rounded p-2" style="max-height: 320px; overflow-y:auto;">
+        <div class="text-muted">Loading...</div>
+    </div>
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <form id="commentForm" class="mt-2">
+            <div class="mb-2">
+                <textarea id="commentContent" class="form-control" rows="3"
+                          placeholder="Write a comment..."></textarea>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="sendCommentBtn">Post</button>
+            <span id="commentStatus" class="ms-2 text-muted"></span>
+        </form>
+    }
+    else
+    {
+        <p class="text-muted">Sign in to post comments.</p>
+    }
+
+    <script>
+    const commentsInventoryId = @Model.Id;
+    const commentsList = document.getElementById('commentsList');
+    const commentToken = document.querySelector('input[name=__RequestVerificationToken]')?.value || '';
+    const commentStatus = document.getElementById('commentStatus');
+
+    async function loadComments() {
+        const resp = await fetch('/Inventory/Comments?inventoryId=' + commentsInventoryId);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        commentsList.innerHTML = '';
+        if (!data.length) {
+            commentsList.innerHTML = '<div class="text-muted">No comments yet.</div>';
+            return;
+        }
+        data.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'mb-2';
+            const escapeHtml = (s) => (s ?? '').replaceAll('&','&amp;')
+                .replaceAll('<','&lt;').replaceAll('>','&gt;')
+                .replaceAll('"','&quot;').replaceAll("'","&#039;");
+
+            div.innerHTML = `
+                <div><strong>${c.authorName}</strong>
+                    <span class="text-muted" style="font-size:0.85em">
+                        ${new Date(c.createdAt).toLocaleString()}
+                    </span>
+                </div>
+                <div>${escapeHtml(c.content).replaceAll('\n','<br/>')}</div>
+                <hr class="mt-1 mb-1" />`;
+            commentsList.appendChild(div);
+        });
+    }
+
+    loadComments();
+    setInterval(loadComments, 5000);
+
+    const sendBtn = document.getElementById('sendCommentBtn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', async () => {
+            const content = document.getElementById('commentContent').value.trim();
+            if (!content) return;
+            const resp = await fetch('/Inventory/AddComment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': commentToken
+                },
+                body: JSON.stringify({ inventoryId: commentsInventoryId, content })
+            });
+            if (resp.ok) {
+                document.getElementById('commentContent').value = '';
+                commentStatus.textContent = 'Posted';
+                setTimeout(() => commentStatus.textContent = '', 2000);
+                await loadComments();
+            }
+        });
+    }
+    </script>
+}
+

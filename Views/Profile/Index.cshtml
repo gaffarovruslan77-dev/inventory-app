@@ -1,0 +1,106 @@
+@model InventoryApp.Web.Controllers.ProfileController.ProfileViewModel
+@{
+    ViewData["Title"] = "Profile";
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
+}
+
+<div class="d-flex align-items-center mb-3">
+    @if (!string.IsNullOrEmpty(Model.User.AvatarUrl))
+    {
+        <img src="@Model.User.AvatarUrl" alt="avatar" class="rounded-circle me-3" style="width:48px;height:48px;" />
+    }
+    <div>
+        <h2 class="mb-0">@T("Profile","Профиль")</h2>
+        <div class="text-muted">@Model.User.DisplayName (@Model.User.Email)</div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-2">@T("My inventories","Мои инвентари")</h5>
+        <a class="btn btn-primary btn-sm" href="/Inventory/Create">@T("+ New inventory","+ Новый инвентарь")</a>
+    </div>
+    <input class="form-control form-control-sm mb-2" id="ownedFilter" placeholder="@T("Filter...","Фильтр...")" />
+    <table class="table table-hover" id="ownedTable">
+        <thead>
+            <tr>
+                <th data-col="title" style="cursor:pointer">@T("Title","Название")</th>
+                <th data-col="created" style="cursor:pointer">@T("Created","Создан")</th>
+                <th data-col="public" style="cursor:pointer">@T("Public","Публичный")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in Model.OwnedInventories)
+            {
+                <tr style="cursor:pointer" onclick="window.location='/Inventory/Details/@inv.Id'">
+                    <td>@inv.Title</td>
+                    <td data-sort="@inv.CreatedAt.Ticks">@inv.CreatedAt.ToString("yyyy-MM-dd")</td>
+                    <td>@(inv.IsPublic ? "✓" : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="mb-4">
+    <h5 class="mb-2">@T("Inventories I can write to","Инвентари с доступом на запись")</h5>
+    <input class="form-control form-control-sm mb-2" id="writableFilter" placeholder="@T("Filter...","Фильтр...")" />
+    <table class="table table-hover" id="writableTable">
+        <thead>
+            <tr>
+                <th data-col="title" style="cursor:pointer">@T("Title","Название")</th>
+                <th data-col="created" style="cursor:pointer">@T("Created","Создан")</th>
+                <th data-col="public" style="cursor:pointer">@T("Public","Публичный")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in Model.WritableInventories)
+            {
+                <tr style="cursor:pointer" onclick="window.location='/Inventory/Details/@inv.Id'">
+                    <td>@inv.Title</td>
+                    <td data-sort="@inv.CreatedAt.Ticks">@inv.CreatedAt.ToString("yyyy-MM-dd")</td>
+                    <td>@(inv.IsPublic ? "✓" : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script>
+function setupTable(tableId, filterId) {
+    const table = document.getElementById(tableId);
+    const filter = document.getElementById(filterId);
+    if (!table || !filter) return;
+
+    filter.addEventListener('input', () => {
+        const q = filter.value.trim().toLowerCase();
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    let asc = true;
+    table.querySelectorAll('thead th').forEach(th => {
+        th.addEventListener('click', () => {
+            const idx = Array.from(th.parentElement.children).indexOf(th);
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            rows.sort((a,b) => {
+                const ac = a.children[idx].getAttribute('data-sort') ?? a.children[idx].textContent;
+                const bc = b.children[idx].getAttribute('data-sort') ?? b.children[idx].textContent;
+                return asc ? ac.localeCompare(bc) : bc.localeCompare(ac);
+            });
+            asc = !asc;
+            const tbody = table.querySelector('tbody');
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+}
+
+setupTable('ownedTable', 'ownedFilter');
+setupTable('writableTable', 'writableFilter');
+</script>
+

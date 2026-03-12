@@ -2,20 +2,25 @@
 
 @{
     ViewData["Title"] = "Inventories";
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
 }
 
-<h2>Inventories</h2>
+<h2>@T("Inventories","Инвентари")</h2>
 
-<a href="/Inventory/Create" class="btn btn-primary mb-3">+ New Inventory</a>
+<a href="/Inventory/Create" class="btn btn-primary mb-3">@T("+ New inventory","+ Новый инвентарь")</a>
 
 <table class="table table-hover">
     <thead>
         <tr>
-            <th>Title</th>
-            <th>Category</th>
-            <th>Creator</th>
-            <th>Created</th>
-            <th>Public</th>
+            <th>@T("Title","Название")</th>
+            <th>@T("Category","Категория")</th>
+            <th>@T("Creator","Создатель")</th>
+            <th>@T("Created","Создан")</th>
+            <th>@T("Public","Публичный")</th>
         </tr>
     </thead>
     <tbody>

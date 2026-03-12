@@ -1,0 +1,68 @@
+@model InventoryApp.Web.Controllers.SearchController.SearchViewModel
+@{
+    ViewData["Title"] = "Search";
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
+}
+
+<h2>@T("Search","Поиск")</h2>
+
+<form method="get" action="/Search" class="mb-3">
+    <div class="input-group">
+        <input class="form-control" name="q" value="@Model.Query" placeholder="@T("Search inventories and items...","Поиск по инвентарям и items...")" />
+        <button class="btn btn-primary" type="submit">@T("Search","Найти")</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <h5>@T("Inventories","Инвентари") (@Model.Inventories.Count)</h5>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in Model.Inventories)
+                    {
+                        <tr style="cursor:pointer" onclick="window.location='/Inventory/Details/@inv.Id'">
+                            <td>@inv.Title</td>
+                            <td>@inv.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <h5>@T("Items","Элементы") (@Model.Items.Count)</h5>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>@T("Inventory","Инвентарь")</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr style="cursor:pointer" onclick="window.location='/Item/Details/@item.Id'">
+                            <td>@(item.CustomId ?? item.Id.ToString())</td>
+                            <td>@item.Inventory?.Title</td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+

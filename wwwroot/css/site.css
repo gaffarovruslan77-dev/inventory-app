@@ -20,3 +20,55 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+body.theme-dark {
+  background-color: #0b1220;
+  color: #e5e7eb;
+}
+
+body.theme-dark .navbar {
+  background-color: #0f172a !important;
+}
+
+body.theme-dark .nav-link,
+body.theme-dark .navbar-brand,
+body.theme-dark .text-dark {
+  color: #e5e7eb !important;
+}
+
+body.theme-dark .nav-link:hover,
+body.theme-dark .nav-link:focus,
+body.theme-dark a:hover,
+body.theme-dark a:focus {
+  color: #ffffff !important;
+}
+
+body.theme-dark .navbar .btn-outline-primary,
+body.theme-dark .navbar .btn-outline-secondary {
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+body.theme-dark .navbar .btn-outline-primary:hover,
+body.theme-dark .navbar .btn-outline-secondary:hover {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+body.theme-dark .table {
+  color: #e5e7eb;
+}
+
+body.theme-dark .table-hover > tbody > tr:hover > * {
+  color: #e5e7eb;
+  background-color: #111827;
+}
+
+body.theme-dark .table-hover > tbody > tr:hover a {
+  color: #ffffff !important;
+}
+
+body.theme-dark .card {
+  background-color: #0f172a;
+  border-color: #1f2937;
+}
