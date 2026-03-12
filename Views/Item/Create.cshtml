@@ -1,16 +1,23 @@
 @model InventoryApp.Web.Models.Inventory
 @{
     ViewData["Title"] = "Add Item";
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
 }
 
-<h2>Add Item to "@Model.Title"</h2>
+<h2>@T("Add item to","Добавить элемент в") "@Model.Title"</h2>
 
 <form method="post">
     @Html.AntiForgeryToken()
     <div class="mb-3">
-        <label class="form-label">Custom ID (optional)</label>
+        <label class="form-label">@T("Custom ID (optional)","Пользовательский ID (опционально)")</label>
         <input name="customId" class="form-control" />
-        <div class="form-text">If empty, the numeric ID will be used.</div>
+        <div class="form-text">
+            @T("If empty, the numeric ID will be used.","Если оставить пустым, будет использован числовой ID.")
+        </div>
     </div>
 
     @if (Model.CustomString1State)
@@ -37,7 +44,9 @@
         </div>
     }
 
-    <button type="submit" class="btn btn-primary">Create</button>
-    <a href="/Inventory/Details/@Model.Id?tab=items" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">@T("Create","Создать")</button>
+    <a href="/Inventory/Details/@Model.Id?tab=items" class="btn btn-secondary">
+        @T("Cancel","Отмена")
+    </a>
 </form>
 

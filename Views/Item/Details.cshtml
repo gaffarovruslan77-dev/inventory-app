@@ -6,12 +6,17 @@
     var canEdit = ViewBag.CanEdit as bool? ?? false;
     var liked = ViewBag.Liked as bool? ?? false;
     var likeCount = ViewBag.LikeCount as int? ?? 0;
+    string T(string en, string ru)
+    {
+        var lang = System.Threading.Thread.CurrentThread.CurrentUICulture.TwoLetterISOLanguageName;
+        return lang == "ru" ? ru : en;
+    }
 }
 
-<h2>Item @((Model.CustomId ?? Model.Id.ToString()))</h2>
+<h2>@T("Item","Элемент") @((Model.CustomId ?? Model.Id.ToString()))</h2>
 
 <p class="text-muted">
-    Inventory: <a href="/Inventory/Details/@Model.InventoryId?tab=items">
+    @T("Inventory","Инвентарь"): <a href="/Inventory/Details/@Model.InventoryId?tab=items">
         @Model.Inventory?.Title
     </a>
 </p>
@@ -19,34 +24,34 @@
 <table class="table table-bordered w-auto">
     <tbody>
         <tr>
-            <th>Created</th>
+            <th>@T("Created","Создан")</th>
             <td>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
         </tr>
         @if (!string.IsNullOrEmpty(Model.CustomString1))
         {
             <tr>
-                <th>String 1</th>
+                <th>@T("String 1","Строка 1")</th>
                 <td>@Model.CustomString1</td>
             </tr>
         }
         @if (Model.CustomInt1.HasValue)
         {
             <tr>
-                <th>Int 1</th>
+                <th>@T("Int 1","Число 1")</th>
                 <td>@Model.CustomInt1</td>
             </tr>
         }
         @if (Model.CustomBool1.HasValue)
         {
             <tr>
-                <th>Bool 1</th>
-                <td>@(Model.CustomBool1 == true ? "Yes" : "No")</td>
+                <th>@T("Bool 1","Булево 1")</th>
+                <td>@(Model.CustomBool1 == true ? T("Yes","Да") : T("No","Нет"))</td>
             </tr>
         }
     </tbody>
 </table>
 
-<a href="/Inventory/Details/@Model.InventoryId?tab=items" class="btn btn-secondary me-2">Back to inventory</a>
+<a href="/Inventory/Details/@Model.InventoryId?tab=items" class="btn btn-secondary me-2">@T("Back to inventory","Назад к инвентарю")</a>
 
 @if (canEdit)
 {
@@ -55,7 +60,7 @@
 
 <button type="button" class="btn btn-outline-secondary me-2" id="likeBtn"
         @(User.Identity?.IsAuthenticated == true ? "" : "disabled")>
-    <span id="likeLabel">@(liked ? "Unlike" : "Like")</span>
+    <span id="likeLabel">@(liked ? T("Unlike","Убрать лайк") : T("Like","Лайк"))</span>
     (<span id="likeCount">@likeCount</span>)
 </button>
 
@@ -89,7 +94,7 @@ if (likeBtn && !likeBtn.disabled) {
         });
         if (!resp.ok) return;
         const data = await resp.json();
-        likeLabel.textContent = data.liked ? 'Unlike' : 'Like';
+        likeLabel.textContent = data.liked ? '@T("Unlike","Убрать лайк")' : '@T("Like","Лайк")';
         likeCount.textContent = data.count;
     });
 }

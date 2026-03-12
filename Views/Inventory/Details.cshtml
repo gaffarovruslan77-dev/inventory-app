@@ -55,13 +55,15 @@
 {
     @if (canWrite)
     {
-        <a href="/Item/Create/@Model.Id" class="btn btn-primary btn-sm mb-3">+ Add Item</a>
+        <a href="/Item/Create/@Model.Id" class="btn btn-primary btn-sm mb-3">
+            @T("+ Add Item","+ Добавить элемент")
+        </a>
     }
     <table class="table table-hover">
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Created</th>
+                <th>@T("Created","Создан")</th>
                 @if (Model.CustomString1State)
                 { <th>@Model.CustomString1Name</th> }
                 @if (Model.CustomInt1State)
@@ -95,27 +97,29 @@
         @Html.AntiForgeryToken()
         <input type="hidden" id="versionField" value="@Model.Version" />
         <div class="mb-3">
-            <label class="form-label">Title</label>
+            <label class="form-label">@T("Title","Название")</label>
             <input id="titleField" class="form-control" value="@Model.Title" />
         </div>
         <div class="mb-3">
-            <label class="form-label">Description</label>
+            <label class="form-label">@T("Description","Описание")</label>
             <textarea id="descField" class="form-control" rows="4">@Model.Description</textarea>
         </div>
         <div class="mb-3 form-check">
             <input type="checkbox" class="form-check-input" id="publicField"
                    @(Model.IsPublic ? "checked" : "") />
-            <label class="form-check-label">Public inventory</label>
+            <label class="form-check-label">@T("Public inventory","Публичный инвентарь")</label>
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Tags (comma-separated)</label>
+            <label class="form-label">@T("Tags (comma-separated)","Теги (через запятую)")</label>
             <input id="tagsField" class="form-control" value="@(string.Join(", ", Model.Tags.Select(t => t.Name)))" autocomplete="off" />
             <div id="tagSuggestions" class="list-group position-absolute" style="z-index: 1000;"></div>
-            <div class="form-text">Start typing to see existing tags.</div>
+            <div class="form-text">@T("Start typing to see existing tags.","Начните вводить, чтобы увидеть существующие теги.")</div>
         </div>
 
-        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save</button>
+        <button type="button" class="btn btn-primary" onclick="saveSettings()">
+            @T("Save","Сохранить")
+        </button>
         <span id="saveStatus" class="ms-2 text-muted"></span>
     </form>
 
@@ -215,9 +219,10 @@
 
 @if (tab == "fields" && canManage)
 {
-    <h5>Fields configuration</h5>
+    <h5>@T("Fields configuration","Настройка полей")</h5>
     <p class="text-muted">
-        Configure which custom fields are available for items in this inventory.
+        @T("Configure which custom fields are available for items in this inventory.",
+           "Настройте, какие дополнительные поля доступны для элементов этого инвентаря.")
     </p>
 
     <form id="fieldsForm">
@@ -225,40 +230,42 @@
 
         <div class="row">
             <div class="col-md-4 mb-3">
-                <h6>Single-line text 1</h6>
+                <h6>@T("Single-line text 1","Однострочный текст 1")</h6>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="fString1State"
                            @(Model.CustomString1State ? "checked" : "") />
-                    <label class="form-check-label" for="fString1State">Enabled</label>
+                    <label class="form-check-label" for="fString1State">@T("Enabled","Включено")</label>
                 </div>
-                <input id="fString1Name" class="form-control" placeholder="Field title"
+                <input id="fString1Name" class="form-control" placeholder="@T("Field title","Название поля")"
                        value="@Model.CustomString1Name" />
             </div>
 
             <div class="col-md-4 mb-3">
-                <h6>Number 1</h6>
+                <h6>@T("Number 1","Число 1")</h6>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="fInt1State"
                            @(Model.CustomInt1State ? "checked" : "") />
-                    <label class="form-check-label" for="fInt1State">Enabled</label>
+                    <label class="form-check-label" for="fInt1State">@T("Enabled","Включено")</label>
                 </div>
-                <input id="fInt1Name" class="form-control" placeholder="Field title"
+                <input id="fInt1Name" class="form-control" placeholder="@T("Field title","Название поля")"
                        value="@Model.CustomInt1Name" />
             </div>
 
             <div class="col-md-4 mb-3">
-                <h6>Boolean 1</h6>
+                <h6>@T("Boolean 1","Булево 1")</h6>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="fBool1State"
                            @(Model.CustomBool1State ? "checked" : "") />
-                    <label class="form-check-label" for="fBool1State">Enabled</label>
+                    <label class="form-check-label" for="fBool1State">@T("Enabled","Включено")</label>
                 </div>
-                <input id="fBool1Name" class="form-control" placeholder="Field title"
+                <input id="fBool1Name" class="form-control" placeholder="@T("Field title","Название поля")"
                        value="@Model.CustomBool1Name" />
             </div>
         </div>
 
-        <button type="button" class="btn btn-primary" onclick="saveFields()">Save fields</button>
+        <button type="button" class="btn btn-primary" onclick="saveFields()">
+            @T("Save fields","Сохранить поля")
+        </button>
         <span id="fieldsStatus" class="ms-2 text-muted"></span>
     </form>
 
@@ -299,13 +306,14 @@
 
 @if (tab == "access" && canManage)
 {
-    <h5>Write access</h5>
+    <h5>@T("Write access","Доступ на запись")</h5>
     <p class="text-muted">
-        Select users who can add and edit items in this inventory.
+        @T("Select users who can add and edit items in this inventory.",
+           "Выберите пользователей, которые могут добавлять и редактировать элементы в этом инвентаре.")
     </p>
 
     <div class="mb-3">
-        <label class="form-label">Add user by name or email</label>
+        <label class="form-label">@T("Add user by name or email","Добавить пользователя по имени или email")</label>
         <input id="accessSearch" class="form-control" autocomplete="off" />
         <div id="accessSuggestions" class="list-group position-absolute" style="z-index: 1000;"></div>
     </div>
@@ -336,7 +344,7 @@
         </table>
 
         <button type="button" id="removeAccessBtn" class="btn btn-outline-danger btn-sm">
-            Remove selected
+            @T("Remove selected","Удалить выбранных")
         </button>
         <span id="accessStatus" class="ms-2 text-muted"></span>
     </form>
@@ -429,9 +437,10 @@
 
 @if (tab == "discussion")
 {
-    <h5>Discussion</h5>
+    <h5>@T("Discussion","Обсуждение")</h5>
     <p class="text-muted">
-        Posts are updated automatically every few seconds.
+        @T("Posts are updated automatically every few seconds.",
+           "Сообщения автоматически обновляются каждые несколько секунд.")
     </p>
 
     <div id="commentsList" class="mb-3 border rounded p-2" style="max-height: 320px; overflow-y:auto;">
@@ -443,15 +452,19 @@
         <form id="commentForm" class="mt-2">
             <div class="mb-2">
                 <textarea id="commentContent" class="form-control" rows="3"
-                          placeholder="Write a comment..."></textarea>
+                          placeholder="@T("Write a comment...","Напишите комментарий...")"></textarea>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" id="sendCommentBtn">Post</button>
+            <button type="button" class="btn btn-primary btn-sm" id="sendCommentBtn">
+                @T("Post","Отправить")
+            </button>
             <span id="commentStatus" class="ms-2 text-muted"></span>
         </form>
     }
     else
     {
-        <p class="text-muted">Sign in to post comments.</p>
+        <p class="text-muted">
+            @T("Sign in to post comments.","Войдите, чтобы писать комментарии.")
+        </p>
     }
 
     <script>
