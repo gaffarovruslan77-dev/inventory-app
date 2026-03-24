@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InventoryApp.Web.Data;
 using InventoryApp.Web.Models;
+using InventoryApp.Web.Services;
 
 namespace InventoryApp.Web.Controllers;
 
@@ -12,11 +13,16 @@ public class ProfileController : Controller
 {
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
+    private readonly ISalesforceService _salesforce;
 
-    public ProfileController(AppDbContext db, UserManager<AppUser> userManager)
+    public ProfileController(
+        AppDbContext db,
+        UserManager<AppUser> userManager,
+        ISalesforceService salesforce)
     {
         _db = db;
         _userManager = userManager;
+        _salesforce = salesforce;
     }
 
     public async Task<IActionResult> Index()
@@ -24,6 +30,8 @@ public class ProfileController : Controller
         var userId = _userManager.GetUserId(User);
         if (string.IsNullOrEmpty(userId))
             return RedirectToAction("Login", "Account");
+
+        ViewBag.ShowAddToCrm = _salesforce.IsConfigured;
 
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -51,6 +59,45 @@ public class ProfileController : Controller
         };
 
         return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddToCrm([FromBody] AddToCrmRequest body, CancellationToken cancellationToken)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId))
+            return Json(new { success = false, error = "Not signed in." });
+
+        if (!_salesforce.IsConfigured)
+            return Json(new { success = false, error = "Salesforce is not configured." });
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Json(new { success = false, error = "User not found." });
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return Json(new { success = false, error = "Your account has no email; cannot create Contact." });
+
+        var result = await _salesforce.CreateAccountAndContactAsync(
+            body.Company ?? "",
+            user.Email,
+            user.DisplayName,
+            body.Phone,
+            body.JobTitle,
+            cancellationToken);
+
+        if (!result.Success)
+            return Json(new { success = false, error = result.ErrorMessage ?? "Salesforce error." });
+
+        return Json(new { success = true });
+    }
+
+    public class AddToCrmRequest
+    {
+        public string? Company { get; set; }
+        public string? Phone { get; set; }
+        public string? JobTitle { get; set; }
     }
 
     public class ProfileViewModel

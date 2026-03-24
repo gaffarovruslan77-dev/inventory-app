@@ -8,16 +8,59 @@
     }
 }
 
-<div class="d-flex align-items-center mb-3">
-    @if (!string.IsNullOrEmpty(Model.User.AvatarUrl))
-    {
-        <img src="@Model.User.AvatarUrl" alt="avatar" class="rounded-circle me-3" style="width:48px;height:48px;" />
-    }
-    <div>
-        <h2 class="mb-0">@T("Profile","Профиль")</h2>
-        <div class="text-muted">@Model.User.DisplayName (@Model.User.Email)</div>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="d-flex align-items-center">
+        @if (!string.IsNullOrEmpty(Model.User.AvatarUrl))
+        {
+            <img src="@Model.User.AvatarUrl" alt="avatar" class="rounded-circle me-3" style="width:48px;height:48px;" />
+        }
+        <div>
+            <h2 class="mb-0">@T("Profile","Профиль")</h2>
+            <div class="text-muted">@Model.User.DisplayName (@Model.User.Email)</div>
+        </div>
     </div>
+    @if (ViewBag.ShowAddToCrm == true)
+    {
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#crmModal">
+            @T("Add to CRM","Добавить в CRM")
+        </button>
+    }
 </div>
+
+@if (ViewBag.ShowAddToCrm == true)
+{
+    @Html.AntiForgeryToken()
+    <div class="modal fade" id="crmModal" tabindex="-1" aria-labelledby="crmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crmModalLabel">@T("Add to Salesforce CRM","Добавить в Salesforce CRM")</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">@T("Creates an Account (company) and a Contact linked to your profile email.","Создаётся Account (компания) и Contact, привязанный к email вашего профиля.")</p>
+                    <div class="mb-2">
+                        <label class="form-label" for="crmCompany">@T("Company","Компания") <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="crmCompany" required maxlength="255" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="crmPhone">@T("Phone","Телефон")</label>
+                        <input type="text" class="form-control" id="crmPhone" maxlength="40" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="crmJobTitle">@T("Job title","Должность")</label>
+                        <input type="text" class="form-control" id="crmJobTitle" maxlength="128" />
+                    </div>
+                    <div id="crmError" class="alert alert-danger d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@T("Cancel","Отмена")</button>
+                    <button type="button" class="btn btn-primary" id="crmSubmit">@T("Submit","Отправить")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
@@ -102,5 +145,54 @@ function setupTable(tableId, filterId) {
 
 setupTable('ownedTable', 'ownedFilter');
 setupTable('writableTable', 'writableFilter');
+
+(function () {
+    const submitBtn = document.getElementById('crmSubmit');
+    if (!submitBtn) return;
+    const tokenInput = document.querySelector('input[name=__RequestVerificationToken]');
+    const errEl = document.getElementById('crmError');
+    const modalEl = document.getElementById('crmModal');
+
+    submitBtn.addEventListener('click', async () => {
+        const company = document.getElementById('crmCompany')?.value?.trim() || '';
+        const phone = document.getElementById('crmPhone')?.value?.trim() || '';
+        const jobTitle = document.getElementById('crmJobTitle')?.value?.trim() || '';
+        errEl.classList.add('d-none');
+        errEl.textContent = '';
+        if (!company) {
+            errEl.textContent = '@T("Company is required.","Укажите компанию.")';
+            errEl.classList.remove('d-none');
+            return;
+        }
+        submitBtn.disabled = true;
+        try {
+            const res = await fetch('@Url.Action("AddToCrm", "Profile")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': tokenInput?.value || ''
+                },
+                body: JSON.stringify({ company, phone, jobTitle })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal?.hide();
+                document.getElementById('crmCompany').value = '';
+                document.getElementById('crmPhone').value = '';
+                document.getElementById('crmJobTitle').value = '';
+                alert('@T("Added to CRM successfully.","Успешно добавлено в CRM.")');
+            } else {
+                errEl.textContent = data.error || '@T("Request failed.","Ошибка запроса.")';
+                errEl.classList.remove('d-none');
+            }
+        } catch {
+            errEl.textContent = '@T("Network error.","Сетевая ошибка.")';
+            errEl.classList.remove('d-none');
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+})();
 </script>
 

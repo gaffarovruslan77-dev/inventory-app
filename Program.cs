@@ -7,6 +7,8 @@ using System.Globalization;
 using AspNet.Security.OAuth.GitHub;
 using InventoryApp.Web.Data;
 using InventoryApp.Web.Models;
+using InventoryApp.Web.Options;
+using InventoryApp.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddLocalization();
+builder.Services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
+
+builder.Services.Configure<SalesforceOptions>(builder.Configuration.GetSection(SalesforceOptions.SectionName));
+builder.Services.AddHttpClient<ISalesforceService, SalesforceService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
